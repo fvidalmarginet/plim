@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Sentinel-2 · Barri del Congrés</title>
+<script src="https://cdn.jsdelivr.net/npm/geotiff@2.1.3/dist-browser/geotiff.js"></script>
 <style>
 :root{--bg:#f6f5f1;--card:#fff;--tx:#1c1c1c;--mu:#666;--ac:#1f7a4d;--bd:#e2e0d8}
 @media(prefers-color-scheme:dark){:root{--bg:#0b0d12;--card:#151821;--tx:#ececec;--mu:#9aa0ad;--ac:#4fd08a;--bd:#272b38}}
@@ -14,20 +15,19 @@ h1{margin:0 0 4px;font-size:1.5rem}
 .card{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:14px;margin-bottom:12px}
 label{display:block;font-size:.8rem;color:var(--mu);margin:8px 0 2px}
 select,input{width:100%;padding:9px;border:1px solid var(--bd);border-radius:8px;background:var(--bg);color:var(--tx);font:inherit}
-.row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
 button{padding:11px 14px;border:0;border-radius:8px;background:var(--ac);color:#fff;font:inherit;font-weight:600;margin:10px 8px 0 0}
 button.sec{background:var(--bd);color:var(--tx)}
 button:disabled{opacity:.5}
-img{width:100%;height:auto;border-radius:8px;image-rendering:pixelated;display:block}
+img{width:100%;height:auto;border-radius:8px;display:block}
 .mu{color:var(--mu);font-size:.85rem}
 .err{color:#c0392b}
-details{margin-top:8px}
 </style>
 </head>
 <body>
 <main>
-<h1>🌍 Sentinel-2 de Catalunya</h1>
-<p class="mu">Resolució màxima de Sentinel-2: 10 m per píxel.</p>
+<h1>🛰️ Sentinel-2 de Catalunya</h1>
+<p class="mu">Última escena disponible a 10 m/píxel (la màxima resolució de Sentinel-2), sense claus ni comptes.</p>
 
 <div class="card">
   <label>Zona</label>
@@ -35,135 +35,123 @@ details{margin-top:8px}
     <option value="41.4225,2.1885,2">Barri del Congrés (2 × 2 km)</option>
     <option value="41.3874,2.1686,6">Barcelona centre (6 × 6 km)</option>
     <option value="41.40,2.17,25">Barcelona i rodalies (25 × 25 km)</option>
-    <option value="41.70,1.75,330">Catalunya sencera (330 × 330 km)</option>
     <option value="custom">Coordenades pròpies…</option>
   </select>
   <div id="cust" class="row" hidden>
     <div><label>Latitud</label><input id="lat" value="41.4225"></div>
     <div><label>Longitud</label><input id="lon" value="2.1885"></div>
-    <div><label>Costat (km)</label><input id="km" value="2"></div>
+    <div><label>Costat (km, màx. 25)</label><input id="km" value="2"></div>
   </div>
-
-  <label>Font</label>
-  <select id="src">
-    <option value="eox">Mosaic anual sense núvols (EOX, sense clau)</option>
-    <option value="cdse">Imatge recent (Copernicus Data Space, cal Instance ID)</option>
-  </select>
-
-  <div id="eoxo">
-    <label>Any del mosaic</label>
-    <select id="year"><option>2024</option><option>2023</option><option>2022</option><option>2021</option></select>
+  <div class="row">
+    <div><label>Màx. núvols (%)</label><input id="cc" value="30" inputmode="numeric"></div>
+    <div><label>Ampliació</label>
+      <select id="zoom"><option value="1">Original</option><option value="4" selected>×4</option><option value="8">×8</option></select></div>
+    <div><label>Repetir (pàgina oberta)</label>
+      <select id="every"><option value="0">No</option><option value="3600">1 h</option><option value="21600">6 h</option><option value="86400">1 dia</option></select></div>
   </div>
-  <div id="cdo" hidden>
-    <label>Instance ID (Copernicus Data Space)</label>
-    <input id="iid" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx">
-    <div class="row">
-      <div><label>Capa</label><input id="layer" value="TRUE-COLOR"></div>
-      <div><label>Màx. núvols (%)</label><input id="cc" value="20"></div>
-      <div><label>Mirar enrere (dies)</label><input id="days" value="30"></div>
-    </div>
-  </div>
-
-  <label>Repetir automàticament (amb la pàgina oberta)</label>
-  <select id="every">
-    <option value="0">No</option><option value="3600">Cada hora</option>
-    <option value="21600">Cada 6 hores</option><option value="86400">Cada dia</option>
-  </select>
-
-  <button id="go">Obtenir imatge</button>
+  <label>Escena</label>
+  <select id="scenes"><option>—</option></select>
+  <button id="go">Buscar l'última imatge</button>
   <button id="save" class="sec" disabled>Desar al mòbil</button>
   <p id="msg" class="mu"></p>
 </div>
 
 <div class="card"><img id="img" alt="" hidden><p id="info" class="mu"></p></div>
-
-<div class="card mu">
-  <b>Com obtenir imatges recents:</b> crea un compte gratuït a
-  <a href="https://dataspace.copernicus.eu" target="_blank" rel="noopener">dataspace.copernicus.eu</a>,
-  ves al <i>Sentinel Hub Dashboard → Configuration Utility</i>, crea una configuració nova
-  basada en la plantilla «Sentinel-2 L2A» i copia'n l'<i>Instance ID</i> aquí. L'ID és una adreça de lectura, no una contrasenya, però no el comparteixis si no vols que altres gastin la teva quota.
-</div>
+<p class="mu">Dades: Copernicus Sentinel-2 L2A (ESA), via Element 84 Earth Search i AWS. El % de núvols és de tota l'escena (110 × 110 km), no només de la teva zona. Les escenes tarden unes hores o dies a aparèixer després de cada pas del satèl·lit (cada ~5 dies).</p>
 </main>
 
 <script>
 const $=id=>document.getElementById(id);
-const KEYS=['zone','lat','lon','km','src','year','iid','layer','cc','days','every'];
+const KEYS=['zone','lat','lon','km','cc','zoom','every'];
 try{const s=JSON.parse(localStorage.getItem('cfg')||'{}');KEYS.forEach(k=>{if(s[k]!=null)$(k).value=s[k]})}catch(e){}
-let blob=null,timer=null;
-
-function ui(){
-  $('cust').hidden=$('zone').value!=='custom';
-  $('eoxo').hidden=$('src').value!=='eox';
-  $('cdo').hidden=$('src').value!=='cdse';
-}
+let blob=null,items=[],timer=null;
+const ui=()=>{$('cust').hidden=$('zone').value!=='custom'};
 KEYS.forEach(k=>$(k).addEventListener('change',()=>{ui();
   try{localStorage.setItem('cfg',JSON.stringify(Object.fromEntries(KEYS.map(k=>[k,$(k).value]))))}catch(e){}
-  schedule()}));
+  if(k==='every')schedule()}));
 ui();
 
 function area(){
   let lat,lon,km;
   if($('zone').value==='custom'){lat=+$('lat').value;lon=+$('lon').value;km=+$('km').value}
   else[lat,lon,km]=$('zone').value.split(',').map(Number);
-  return{lat,lon,km};
+  return{lat,lon,km:Math.min(km||2,25)};
 }
 
-function build(){
+// lat/lon -> UTM (Krüger series), zona donada
+function utm(lat,lon,zone){
+  const a=6378137,f=1/298.257223563,n=f/(2-f),k0=.9996,R=Math.PI/180;
+  const A=a/(1+n)*(1+n*n/4+n**4/64);
+  const al=[n/2-2*n*n/3+5*n**3/16,13*n*n/48-3*n**3/5,61*n**3/240];
+  const p=lat*R,l=(lon-(zone*6-183))*R,s=2*Math.sqrt(n)/(1+n);
+  const t=Math.sinh(Math.atanh(Math.sin(p))-s*Math.atanh(s*Math.sin(p)));
+  const xi0=Math.atan2(t,Math.cos(l)),eta0=Math.atanh(Math.sin(l)/Math.sqrt(1+t*t));
+  let xi=xi0,eta=eta0;
+  al.forEach((v,i)=>{const j=2*(i+1);xi+=v*Math.sin(j*xi0)*Math.cosh(j*eta0);eta+=v*Math.cos(j*xi0)*Math.sinh(j*eta0)});
+  return{E:500000+k0*A*eta,N:k0*A*xi+(lat<0?1e7:0)};
+}
+
+async function search(){
   const{lat,lon,km}=area();
-  const dLat=km/111.32/2, dLon=km/(111.32*Math.cos(lat*Math.PI/180))/2;
-  const px=Math.max(64,Math.min(2500,Math.round(km*1000/10)));
-  const bbox=[lon-dLon,lat-dLat,lon+dLon,lat+dLat].map(v=>v.toFixed(6)).join(',');
-  const mpp=Math.round(km*1000/px);
-  let url;
-  const common=`SERVICE=WMS&REQUEST=GetMap&VERSION=1.1.1&SRS=EPSG:4326&BBOX=${bbox}&WIDTH=${px}&HEIGHT=${px}&FORMAT=image/png&STYLES=`;
-  if($('src').value==='eox'){
-    url=`https://tiles.maps.eox.at/wms?${common}&LAYERS=s2cloudless-${$('year').value}`;
-  }else{
-    const id=$('iid').value.trim();
-    if(!id)throw new Error("Falta l'Instance ID de Copernicus.");
-    const to=new Date(),from=new Date(Date.now()-(+$('days').value||30)*864e5);
-    const d=x=>x.toISOString().slice(0,10);
-    url=`https://sh.dataspace.copernicus.eu/ogc/wms/${encodeURIComponent(id)}?${common}&LAYERS=${encodeURIComponent($('layer').value)}`+
-        `&TIME=${d(from)}/${d(to)}&MAXCC=${+$('cc').value||20}&showlogo=false`;
-  }
-  return{url,px,mpp};
+  const d=.02+km/111/2, from=new Date(Date.now()-45*864e5).toISOString();
+  const body={collections:['sentinel-2-l2a'],bbox:[lon-d,lat-d,lon+d,lat+d],
+    datetime:`${from}/${new Date().toISOString()}`,limit:15,
+    query:{'eo:cloud_cover':{lte:+$('cc').value||30}},
+    sortby:[{field:'properties.datetime',direction:'desc'}]};
+  const r=await fetch('https://earth-search.aws.element84.com/v1/search',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+  if(!r.ok)throw new Error('Cerca fallida ('+r.status+')');
+  items=(await r.json()).features||[];
+  if(!items.length)throw new Error("No hi ha escenes amb aquest màxim de núvols als últims 45 dies. Puja el % de núvols.");
+  $('scenes').innerHTML=items.map((f,i)=>`<option value="${i}">${new Date(f.properties.datetime).toLocaleString('ca',{dateStyle:'medium',timeStyle:'short'})} · ${Math.round(f.properties['eo:cloud_cover'])}% núvols</option>`).join('');
 }
 
-async function get(){
-  $('msg').className='mu';$('msg').textContent='Descarregant…';$('go').disabled=true;
-  try{
-    const{url,px,mpp}=build();
-    const r=await fetch(url);
-    const t=r.headers.get('content-type')||'';
-    if(!r.ok||!t.startsWith('image'))throw new Error('El servidor ha respost: '+(await r.text()).slice(0,200));
-    blob=await r.blob();
-    $('img').src=URL.createObjectURL(blob);$('img').hidden=false;
-    $('info').textContent=`${px} × ${px} px · ~${mpp} m/píxel · ${new Date().toLocaleString('ca')}`+(mpp>10?' (limitat pel màxim de la mida de la imatge)':'');
-    $('save').disabled=false;$('msg').textContent='';
-    return true;
-  }catch(e){$('msg').className='err';$('msg').textContent=e.message;return false}
+async function render(){
+  const f=items[+$('scenes').value];
+  const{lat,lon,km}=area();
+  const epsg=f.properties['proj:epsg']||+String(f.properties['proj:code']||'').replace('EPSG:','');
+  const zone=epsg-32600;
+  const href=(f.assets.visual||{}).href;
+  if(!href)throw new Error("Aquesta escena no té imatge en color real.");
+  const tiff=await GeoTIFF.fromUrl(href), im=await tiff.getImage();
+  const[ox,oy]=im.getOrigin(),[rx,ry]=im.getResolution(),res=Math.abs(rx);
+  const{E,N}=utm(lat,lon,zone), w=Math.round(km*1000/res);
+  const x0=Math.round((E-ox)/res-w/2), y0=Math.round((oy-N)/res-w/2);
+  if(x0<0||y0<0||x0+w>im.getWidth()||y0+w>im.getHeight())throw new Error("La zona no és completament dins d'aquesta escena (tria'n una altra a la llista).");
+  const px=await im.readRasters({window:[x0,y0,x0+w,y0+w],samples:[0,1,2],interleave:true});
+  const c=document.createElement('canvas');c.width=c.height=w;
+  const g=c.getContext('2d'),id=g.createImageData(w,w);let sum=0;
+  for(let i=0,j=0;i<w*w;i++){id.data[j++]=px[i*3];id.data[j++]=px[i*3+1];id.data[j++]=px[i*3+2];id.data[j++]=255;sum+=px[i*3+1]}
+  if(sum===0)throw new Error("Aquesta escena no té dades a la teva zona (vora de l'escena).");
+  g.putImageData(id,0,0);
+  const z=+$('zoom').value,o=document.createElement('canvas');o.width=o.height=w*z;
+  const og=o.getContext('2d');og.imageSmoothingEnabled=false;og.drawImage(c,0,0,w*z,w*z);
+  blob=await new Promise(r=>o.toBlob(r,'image/png'));
+  $('img').src=URL.createObjectURL(blob);$('img').hidden=false;$('img').style.imageRendering='pixelated';
+  $('info').textContent=`${new Date(f.properties.datetime).toLocaleString('ca')} · ${Math.round(f.properties['eo:cloud_cover'])}% núvols · ${w}×${w} px natius (${res} m/píxel) · fitxer ${w*z}×${w*z}`;
+  $('save').disabled=false;
+}
+
+async function go(){
+  $('msg').className='mu';$('msg').textContent='Buscant i descarregant…';$('go').disabled=true;
+  try{await search();await render();$('msg').textContent='';return true}
+  catch(e){$('msg').className='err';$('msg').textContent=e.message;return false}
   finally{$('go').disabled=false}
 }
-
-function name(){return`sentinel_${new Date().toISOString().slice(0,16).replace(/[:T]/g,'-')}.png`}
+$('scenes').onchange=async()=>{$('msg').textContent='Descarregant…';
+  try{await render();$('msg').textContent=''}catch(e){$('msg').className='err';$('msg').textContent=e.message}};
 
 async function save(){
   if(!blob)return;
-  const f=new File([blob],name(),{type:'image/png'});
+  const f=new File([blob],`sentinel_${new Date().toISOString().slice(0,16).replace(/[:T]/g,'-')}.png`,{type:'image/png'});
   if(navigator.canShare&&navigator.canShare({files:[f]})){
     try{await navigator.share({files:[f],title:'Sentinel-2'});return}catch(e){if(e.name==='AbortError')return}
   }
   const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=f.name;a.click();
 }
+function schedule(){clearInterval(timer);const s=+$('every').value;
+  if(s)timer=setInterval(async()=>{if(await go())save()},s*1000)}
 
-function schedule(){
-  clearInterval(timer);
-  const s=+$('every').value;
-  if(s)timer=setInterval(async()=>{if(await get())save()},s*1000);
-}
-
-$('go').onclick=get;$('save').onclick=save;
-schedule();
+$('go').onclick=go;$('save').onclick=save;schedule();go();
 </script>
 </body>
 </html>
