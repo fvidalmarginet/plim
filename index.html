@@ -2,70 +2,166 @@
 <html lang="ca">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Detector d’iris</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>On és la BepiColombo?</title>
 <style>
-:root{box-sizing:border-box}
-*{box-sizing:inherit}
-html,body{height:100%;margin:0;background:#101418;color:#eef1f4;font:16px/1.4 system-ui,sans-serif}
-#stage{position:relative;width:100%;height:100%;display:flex;align-items:center;justify-content:center}
-video,canvas{position:absolute;max-width:100%;max-height:100%;transform:scaleX(-1)}
-#msg{position:absolute;inset:0;z-index:2;display:flex;flex-direction:column;gap:12px;align-items:center;justify-content:center;text-align:center;padding:24px;background:#101418}
-button{font:inherit;font-weight:600;padding:12px 22px;border:0;border-radius:8px;background:#8fd6cb;color:#0b1412}
-#st{position:absolute;left:10px;bottom:calc(10px + env(safe-area-inset-bottom,0px));z-index:1;background:#000a;padding:3px 9px;border-radius:6px;font-size:.85rem}
+:root{--bg:#f6f5f1;--card:#fff;--tx:#1c1c1c;--mu:#666;--ac:#c2571a;--bd:#e2e0d8}
+@media(prefers-color-scheme:dark){:root{--bg:#0b0d12;--card:#151821;--tx:#ececec;--mu:#9aa0ad;--ac:#f08a4b;--bd:#272b38}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font:16px/1.5 system-ui,sans-serif}
+main{max-width:860px;margin:auto;padding:20px 16px 48px}
+h1{margin:0 0 4px;font-size:1.6rem}
+h2{font-size:1.05rem;margin:0 0 10px}
+.sub{color:var(--mu);margin:0 0 18px}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:16px;margin-bottom:14px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px}
+.k{color:var(--mu);font-size:.8rem}
+.v{font-size:1.3rem;font-weight:600;font-variant-numeric:tabular-nums}
+.phase{border-left:4px solid var(--ac);padding-left:12px}
+canvas{width:100%;height:auto;display:block;background:#05070c;border-radius:8px}
+.two{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px}
+ul{margin:0;padding-left:18px}
+li{margin:3px 0}
+li.done{color:var(--mu)}
+a{color:var(--ac)}
+.err{color:#c0392b}
+small{color:var(--mu)}
 </style>
 </head>
 <body>
-<div id="stage">
-  <video id="v" playsinline muted></video>
-  <canvas id="c"></canvas>
-  <div id="st" hidden></div>
-  <div id="msg"><button id="go">Activa la càmera</button><small id="info">El vídeo es processa al teu dispositiu.</small></div>
+<main>
+<h1>🛰️ On és la BepiColombo?</h1>
+<p class="sub">Missió ESA/JAXA a Mercuri · dades en temps quasi real de JPL Horizons</p>
+
+<div class="card phase">
+  <h2>Fase actual</h2>
+  <div id="phase">…</div>
 </div>
-<script type="module">
-import {FaceLandmarker,FilesetResolver} from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/vision_bundle.mjs";
-const BASE="https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14";
-const MODEL="https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task";
-const $=id=>document.getElementById(id),v=$("v"),c=$("c"),x=c.getContext("2d"),st=$("st");
-let lm,last=-1;
-// Iris: centre + 4 points on the edge (right eye 468-472, left eye 473-477)
-const IRIS=[[468,469,470,471,472],[473,474,475,476,477]];
-function draw(L){
-  x.clearRect(0,0,c.width,c.height);
-  const lw=Math.max(2,c.width/320);
-  for(const ids of IRIS){
-    const p=ids.map(i=>({x:L[i].x*c.width,y:L[i].y*c.height}));
-    const r=p.slice(1).reduce((s,q)=>s+Math.hypot(q.x-p[0].x,q.y-p[0].y),0)/4;
-    x.strokeStyle="#33f0c8";x.fillStyle="#33f0c8";x.lineWidth=lw;
-    x.beginPath();x.arc(p[0].x,p[0].y,r,0,Math.PI*2);x.stroke();
-    x.beginPath();x.arc(p[0].x,p[0].y,lw*1.2,0,Math.PI*2);x.fill();
-  }
+
+<div class="card">
+  <h2>Posició <small id="stamp"></small></h2>
+  <div class="grid" id="nums"><span class="k">Carregant dades…</span></div>
+  <p id="err" class="err"></p>
+</div>
+
+<div class="two">
+  <div class="card"><h2>Sistema solar intern</h2><canvas id="c1" width="400" height="400"></canvas></div>
+  <div class="card"><h2>Al voltant de Mercuri</h2><canvas id="c2" width="400" height="400"></canvas><small id="c2n"></small></div>
+</div>
+
+<div class="card">
+  <h2>Cronologia</h2>
+  <ul id="tl"></ul>
+</div>
+
+<div class="card">
+  <h2>Imatges</h2>
+  <p>No hi ha transmissió d'imatges en directe: les càmeres de la missió fan fotos puntuals i ESA les publica després. Aquí tens on trobar-les:</p>
+  <ul>
+    <li><a href="https://www.esa.int/Science_Exploration/Space_Science/BepiColombo/Latest_updates_BepiColombo_s_arrival_at_Mercury" target="_blank" rel="noopener">Actualitzacions de l'arribada (ESA)</a></li>
+    <li><a href="https://www.esa.int/Science_Exploration/Space_Science/BepiColombo" target="_blank" rel="noopener">Pàgina de la missió (ESA)</a></li>
+    <li><a href="https://www.esa.int/ESA_Multimedia/Missions/BepiColombo" target="_blank" rel="noopener">Galeria d'imatges i vídeos (ESA)</a></li>
+    <li><a href="https://eyes.nasa.gov/apps/solar-system/" target="_blank" rel="noopener">Eyes on the Solar System (NASA) — visor 3D, cerca-hi "BepiColombo"</a></li>
+  </ul>
+</div>
+<small>Fonts: JPL Horizons (posició), ESA (calendari). Les xifres són orientatives.</small>
+</main>
+
+<script>
+const AU=149597870.7, C=299792.458, RM=2439.7;
+const EVENTS=[
+ ["2026-09-03","Separació del mòdul de transferència (MTM)"],
+ ["2026-11-21","Inserció en òrbita de Mercuri (MPO + Mio junts)"],
+ ["2026-12-09","Separació de Mio (9–10 de desembre)"],
+ ["2026-12-16","MPO allibera l'escut MOSIF de Mio"],
+ ["2027-03-10","MPO arriba a la seva òrbita polar final"],
+ ["2027-04-06","Inici de les operacions científiques"]
+];
+const $=id=>document.getElementById(id);
+const fmt=(n,d=0)=>n.toLocaleString('ca',{maximumFractionDigits:d});
+
+function timeline(){
+  const now=Date.now();
+  $('tl').innerHTML=EVENTS.map(([d,t])=>{
+    const done=new Date(d+"T23:59:59Z")<now;
+    return `<li class="${done?'done':''}">${done?'✅':'⏳'} <b>${new Date(d).toLocaleDateString('ca',{day:'numeric',month:'short',year:'numeric'})}</b> — ${t}</li>`;
+  }).join('');
+  const past=EVENTS.filter(([d])=>new Date(d+"T00:00:00Z")<=now);
+  const next=EVENTS.find(([d])=>new Date(d+"T23:59:59Z")>now);
+  let h="";
+  if(past.length) h+=`Última fita: <b>${past[past.length-1][1]}</b>.<br>`;
+  if(next){const dd=Math.ceil((new Date(next[0]+"T00:00:00Z")-now)/864e5);
+    h+=`Següent: <b>${next[1]}</b> ${dd>0?`(d'aquí a ${dd} dies)`:'(avui)'}.`;}
+  $('phase').innerHTML=h;
 }
-function tick(){
-  requestAnimationFrame(tick);
-  if(v.readyState<2||v.currentTime===last)return;
-  last=v.currentTime;
-  const r=lm.detectForVideo(v,performance.now());
-  if(r.faceLandmarks.length){st.hidden=true;draw(r.faceLandmarks[0])}
-  else{x.clearRect(0,0,c.width,c.height);st.hidden=false;st.textContent="No et veig la cara"}
+
+async function hz(cmd,center,t0,t1){
+  const q={format:'text',COMMAND:`'${cmd}'`,EPHEM_TYPE:'VECTORS',CENTER:`'${center}'`,
+    START_TIME:`'${t0}'`,STOP_TIME:`'${t1}'`,STEP_SIZE:"'1m'",VEC_TABLE:"'2'",
+    CSV_FORMAT:"'YES'",OUT_UNITS:"'KM-S'",REF_PLANE:"'ECLIPTIC'",OBJ_DATA:"'NO'"};
+  const url='https://ssd.jpl.nasa.gov/api/horizons.api?'+Object.entries(q).map(([k,v])=>k+'='+encodeURIComponent(v)).join('&');
+  const txt=await (await fetch(url)).text();
+  const m=txt.split('$$SOE')[1];
+  if(!m) throw new Error(txt.slice(0,200));
+  const f=m.split('$$EOE')[0].trim().split('\n')[0].split(',').map(s=>s.trim());
+  return {p:f.slice(2,5).map(Number),v:f.slice(5,8).map(Number)};
 }
-$("go").onclick=async()=>{
-  const b=$("go");b.disabled=true;b.textContent="Carregant…";
+const sub=(a,b)=>a.map((x,i)=>x-b[i]);
+const norm=a=>Math.hypot(...a);
+
+function iso(d){return d.toISOString().slice(0,16).replace('T',' ')}
+
+async function update(){
+  timeline();
+  const now=new Date(), end=new Date(now.getTime()+120000);
+  const [a,b]=[iso(now),iso(end)];
   try{
-    v.srcObject=await navigator.mediaDevices.getUserMedia({video:{facingMode:"user",width:{ideal:1280},height:{ideal:720}},audio:false});
-    await v.play();
-    c.width=v.videoWidth;c.height=v.videoHeight;
-    const fit=()=>{const k=Math.min(innerWidth/c.width,innerHeight/c.height);v.style.width=c.style.width=c.width*k+"px";v.style.height=c.style.height=c.height*k+"px"};
-    fit();addEventListener("resize",fit);
-    const fs=await FilesetResolver.forVisionTasks(BASE+"/wasm");
-    const o=d=>({baseOptions:{modelAssetPath:MODEL,delegate:d},runningMode:"VIDEO",numFaces:1});
-    try{lm=await FaceLandmarker.createFromOptions(fs,o("GPU"))}catch(e){lm=await FaceLandmarker.createFromOptions(fs,o("CPU"))}
-    $("msg").remove();tick();
+    const [sc,me,ea]=await Promise.all([hz('-121','@sun',a,b),hz('199','@sun',a,b),hz('399','@sun',a,b)]);
+    const rel=sub(sc.p,me.p), relv=sub(sc.v,me.v);
+    const dM=norm(rel), dS=norm(sc.p), dE=norm(sub(sc.p,ea.p));
+    $('nums').innerHTML=[
+      ['Distància a Mercuri',`${fmt(dM)} km`],
+      ['Altitud sobre la superfície',`${fmt(Math.max(dM-RM,0))} km`],
+      ['Velocitat relativa a Mercuri',`${fmt(norm(relv),2)} km/s`],
+      ['Distància al Sol',`${fmt(dS/AU,3)} UA`],
+      ['Distància a la Terra',`${fmt(dE/AU,3)} UA`],
+      ['Senyal de ràdio (un sentit)',`${fmt(dE/C/60,1)} min`]
+    ].map(([k,v])=>`<div><div class="k">${k}</div><div class="v">${v}</div></div>`).join('');
+    $('stamp').textContent='· '+now.toLocaleTimeString('ca')+' (actualitza cada minut)';
+    $('err').textContent='';
+    draw1(sc.p,me.p,ea.p); draw2(rel,dM);
   }catch(e){
-    b.disabled=false;b.textContent="Torna-ho a provar";
-    $("info").textContent=e.name==="NotAllowedError"?"Permet l’accés a la càmera (la pàgina ha d’estar en HTTPS o a localhost).":"Error: "+e.message;
+    $('nums').innerHTML='';
+    $('err').textContent="No he pogut obtenir la posició de JPL Horizons ara mateix. Prova-ho més tard o consulta els enllaços de sota.";
+    console.error(e);
   }
-};
+}
+
+function setup(c){const x=c.getContext('2d');x.clearRect(0,0,400,400);x.fillStyle='#05070c';x.fillRect(0,0,400,400);return x}
+function dot(x,px,py,r,col,label){x.fillStyle=col;x.beginPath();x.arc(px,py,r,0,7);x.fill();
+  if(label){x.fillStyle='#bbb';x.font='12px system-ui';x.fillText(label,px+r+4,py+4)}}
+
+function draw1(sc,me,ea){
+  const x=setup($('c1')), S=190/(1.15*AU), P=p=>[200+p[0]*S,200-p[1]*S];
+  x.strokeStyle='#333';
+  for(const r of [0.387,1]){x.beginPath();x.arc(200,200,r*AU*S,0,7);x.stroke()}
+  dot(x,200,200,7,'#ffcc33','Sol');
+  const e=P(ea), m=P(me), s=P(sc);
+  dot(x,...e,5,'#4aa3ff','Terra');
+  dot(x,...m,4,'#c9a27a','Mercuri');
+  x.strokeStyle='#f08a4b';x.beginPath();x.arc(...s,9,0,7);x.stroke();
+}
+
+function draw2(rel,d){
+  const x=setup($('c2'));
+  const R=Math.max(d*1.4,RM*4), S=180/R;
+  dot(x,200,200,Math.max(RM*S,4),'#c9a27a','Mercuri');
+  const px=200+rel[0]*S, py=200-rel[1]*S;
+  dot(x,px,py,4,'#f08a4b','BepiColombo');
+  $('c2n').textContent=`Vista des de dalt (pla de l'el·líptica). Escala: ${fmt(R)} km fins a la vora.`;
+}
+
+update(); setInterval(update,60000);
 </script>
 </body>
 </html>
