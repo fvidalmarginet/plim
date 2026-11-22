@@ -3,165 +3,167 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>On és la BepiColombo?</title>
+<title>Sentinel-2 · Barri del Congrés</title>
 <style>
-:root{--bg:#f6f5f1;--card:#fff;--tx:#1c1c1c;--mu:#666;--ac:#c2571a;--bd:#e2e0d8}
-@media(prefers-color-scheme:dark){:root{--bg:#0b0d12;--card:#151821;--tx:#ececec;--mu:#9aa0ad;--ac:#f08a4b;--bd:#272b38}}
+:root{--bg:#f6f5f1;--card:#fff;--tx:#1c1c1c;--mu:#666;--ac:#1f7a4d;--bd:#e2e0d8}
+@media(prefers-color-scheme:dark){:root{--bg:#0b0d12;--card:#151821;--tx:#ececec;--mu:#9aa0ad;--ac:#4fd08a;--bd:#272b38}}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--tx);font:16px/1.5 system-ui,sans-serif}
-main{max-width:860px;margin:auto;padding:20px 16px 48px}
-h1{margin:0 0 4px;font-size:1.6rem}
-h2{font-size:1.05rem;margin:0 0 10px}
-.sub{color:var(--mu);margin:0 0 18px}
-.card{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:16px;margin-bottom:14px}
-.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px}
-.k{color:var(--mu);font-size:.8rem}
-.v{font-size:1.3rem;font-weight:600;font-variant-numeric:tabular-nums}
-.phase{border-left:4px solid var(--ac);padding-left:12px}
-canvas{width:100%;height:auto;display:block;background:#05070c;border-radius:8px}
-.two{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px}
-ul{margin:0;padding-left:18px}
-li{margin:3px 0}
-li.done{color:var(--mu)}
-a{color:var(--ac)}
+main{max-width:860px;margin:auto;padding:18px 14px 48px}
+h1{margin:0 0 4px;font-size:1.5rem}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:14px;margin-bottom:12px}
+label{display:block;font-size:.8rem;color:var(--mu);margin:8px 0 2px}
+select,input{width:100%;padding:9px;border:1px solid var(--bd);border-radius:8px;background:var(--bg);color:var(--tx);font:inherit}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+button{padding:11px 14px;border:0;border-radius:8px;background:var(--ac);color:#fff;font:inherit;font-weight:600;margin:10px 8px 0 0}
+button.sec{background:var(--bd);color:var(--tx)}
+button:disabled{opacity:.5}
+img{width:100%;height:auto;border-radius:8px;image-rendering:pixelated;display:block}
+.mu{color:var(--mu);font-size:.85rem}
 .err{color:#c0392b}
-small{color:var(--mu)}
+details{margin-top:8px}
 </style>
 </head>
 <body>
 <main>
-<h1>🛰️ On és la BepiColombo?</h1>
-<p class="sub">Missió ESA/JAXA a Mercuri · dades en temps quasi real de JPL Horizons</p>
-
-<div class="card phase">
-  <h2>Fase actual</h2>
-  <div id="phase">…</div>
-</div>
+<h1>🌍 Sentinel-2 de Catalunya</h1>
+<p class="mu">Resolució màxima de Sentinel-2: 10 m per píxel.</p>
 
 <div class="card">
-  <h2>Posició <small id="stamp"></small></h2>
-  <div class="grid" id="nums"><span class="k">Carregant dades…</span></div>
-  <p id="err" class="err"></p>
+  <label>Zona</label>
+  <select id="zone">
+    <option value="41.4225,2.1885,2">Barri del Congrés (2 × 2 km)</option>
+    <option value="41.3874,2.1686,6">Barcelona centre (6 × 6 km)</option>
+    <option value="41.40,2.17,25">Barcelona i rodalies (25 × 25 km)</option>
+    <option value="41.70,1.75,330">Catalunya sencera (330 × 330 km)</option>
+    <option value="custom">Coordenades pròpies…</option>
+  </select>
+  <div id="cust" class="row" hidden>
+    <div><label>Latitud</label><input id="lat" value="41.4225"></div>
+    <div><label>Longitud</label><input id="lon" value="2.1885"></div>
+    <div><label>Costat (km)</label><input id="km" value="2"></div>
+  </div>
+
+  <label>Font</label>
+  <select id="src">
+    <option value="eox">Mosaic anual sense núvols (EOX, sense clau)</option>
+    <option value="cdse">Imatge recent (Copernicus Data Space, cal Instance ID)</option>
+  </select>
+
+  <div id="eoxo">
+    <label>Any del mosaic</label>
+    <select id="year"><option>2024</option><option>2023</option><option>2022</option><option>2021</option></select>
+  </div>
+  <div id="cdo" hidden>
+    <label>Instance ID (Copernicus Data Space)</label>
+    <input id="iid" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx">
+    <div class="row">
+      <div><label>Capa</label><input id="layer" value="TRUE-COLOR"></div>
+      <div><label>Màx. núvols (%)</label><input id="cc" value="20"></div>
+      <div><label>Mirar enrere (dies)</label><input id="days" value="30"></div>
+    </div>
+  </div>
+
+  <label>Repetir automàticament (amb la pàgina oberta)</label>
+  <select id="every">
+    <option value="0">No</option><option value="3600">Cada hora</option>
+    <option value="21600">Cada 6 hores</option><option value="86400">Cada dia</option>
+  </select>
+
+  <button id="go">Obtenir imatge</button>
+  <button id="save" class="sec" disabled>Desar al mòbil</button>
+  <p id="msg" class="mu"></p>
 </div>
 
-<div class="two">
-  <div class="card"><h2>Sistema solar intern</h2><canvas id="c1" width="400" height="400"></canvas></div>
-  <div class="card"><h2>Al voltant de Mercuri</h2><canvas id="c2" width="400" height="400"></canvas><small id="c2n"></small></div>
-</div>
+<div class="card"><img id="img" alt="" hidden><p id="info" class="mu"></p></div>
 
-<div class="card">
-  <h2>Cronologia</h2>
-  <ul id="tl"></ul>
+<div class="card mu">
+  <b>Com obtenir imatges recents:</b> crea un compte gratuït a
+  <a href="https://dataspace.copernicus.eu" target="_blank" rel="noopener">dataspace.copernicus.eu</a>,
+  ves al <i>Sentinel Hub Dashboard → Configuration Utility</i>, crea una configuració nova
+  basada en la plantilla «Sentinel-2 L2A» i copia'n l'<i>Instance ID</i> aquí. L'ID és una adreça de lectura, no una contrasenya, però no el comparteixis si no vols que altres gastin la teva quota.
 </div>
-
-<div class="card">
-  <h2>Imatges</h2>
-  <p>No hi ha transmissió d'imatges en directe: les càmeres de la missió fan fotos puntuals i ESA les publica després. Aquí tens on trobar-les:</p>
-  <ul>
-    <li><a href="https://www.esa.int/Science_Exploration/Space_Science/BepiColombo/Latest_updates_BepiColombo_s_arrival_at_Mercury" target="_blank" rel="noopener">Actualitzacions de l'arribada (ESA)</a></li>
-    <li><a href="https://www.esa.int/Science_Exploration/Space_Science/BepiColombo" target="_blank" rel="noopener">Pàgina de la missió (ESA)</a></li>
-    <li><a href="https://www.esa.int/ESA_Multimedia/Missions/BepiColombo" target="_blank" rel="noopener">Galeria d'imatges i vídeos (ESA)</a></li>
-    <li><a href="https://eyes.nasa.gov/apps/solar-system/" target="_blank" rel="noopener">Eyes on the Solar System (NASA) — visor 3D, cerca-hi "BepiColombo"</a></li>
-  </ul>
-</div>
-<small>Fonts: JPL Horizons (posició), ESA (calendari). Les xifres són orientatives.</small>
 </main>
 
 <script>
-const AU=149597870.7, C=299792.458, RM=2439.7;
-const EVENTS=[
- ["2026-09-03","Separació del mòdul de transferència (MTM)"],
- ["2026-11-21","Inserció en òrbita de Mercuri (MPO + Mio junts)"],
- ["2026-12-09","Separació de Mio (9–10 de desembre)"],
- ["2026-12-16","MPO allibera l'escut MOSIF de Mio"],
- ["2027-03-10","MPO arriba a la seva òrbita polar final"],
- ["2027-04-06","Inici de les operacions científiques"]
-];
 const $=id=>document.getElementById(id);
-const fmt=(n,d=0)=>n.toLocaleString('ca',{maximumFractionDigits:d});
+const KEYS=['zone','lat','lon','km','src','year','iid','layer','cc','days','every'];
+try{const s=JSON.parse(localStorage.getItem('cfg')||'{}');KEYS.forEach(k=>{if(s[k]!=null)$(k).value=s[k]})}catch(e){}
+let blob=null,timer=null;
 
-function timeline(){
-  const now=Date.now();
-  $('tl').innerHTML=EVENTS.map(([d,t])=>{
-    const done=new Date(d+"T23:59:59Z")<now;
-    return `<li class="${done?'done':''}">${done?'✅':'⏳'} <b>${new Date(d).toLocaleDateString('ca',{day:'numeric',month:'short',year:'numeric'})}</b> — ${t}</li>`;
-  }).join('');
-  const past=EVENTS.filter(([d])=>new Date(d+"T00:00:00Z")<=now);
-  const next=EVENTS.find(([d])=>new Date(d+"T23:59:59Z")>now);
-  let h="";
-  if(past.length) h+=`Última fita: <b>${past[past.length-1][1]}</b>.<br>`;
-  if(next){const dd=Math.ceil((new Date(next[0]+"T00:00:00Z")-now)/864e5);
-    h+=`Següent: <b>${next[1]}</b> ${dd>0?`(d'aquí a ${dd} dies)`:'(avui)'}.`;}
-  $('phase').innerHTML=h;
+function ui(){
+  $('cust').hidden=$('zone').value!=='custom';
+  $('eoxo').hidden=$('src').value!=='eox';
+  $('cdo').hidden=$('src').value!=='cdse';
+}
+KEYS.forEach(k=>$(k).addEventListener('change',()=>{ui();
+  try{localStorage.setItem('cfg',JSON.stringify(Object.fromEntries(KEYS.map(k=>[k,$(k).value]))))}catch(e){}
+  schedule()}));
+ui();
+
+function area(){
+  let lat,lon,km;
+  if($('zone').value==='custom'){lat=+$('lat').value;lon=+$('lon').value;km=+$('km').value}
+  else[lat,lon,km]=$('zone').value.split(',').map(Number);
+  return{lat,lon,km};
 }
 
-async function hz(cmd,center,t0,t1){
-  const q={format:'text',COMMAND:`'${cmd}'`,EPHEM_TYPE:'VECTORS',CENTER:`'${center}'`,
-    START_TIME:`'${t0}'`,STOP_TIME:`'${t1}'`,STEP_SIZE:"'1m'",VEC_TABLE:"'2'",
-    CSV_FORMAT:"'YES'",OUT_UNITS:"'KM-S'",REF_PLANE:"'ECLIPTIC'",OBJ_DATA:"'NO'"};
-  const url='https://ssd.jpl.nasa.gov/api/horizons.api?'+Object.entries(q).map(([k,v])=>k+'='+encodeURIComponent(v)).join('&');
-  const txt=await (await fetch(url)).text();
-  const m=txt.split('$$SOE')[1];
-  if(!m) throw new Error(txt.slice(0,200));
-  const f=m.split('$$EOE')[0].trim().split('\n')[0].split(',').map(s=>s.trim());
-  return {p:f.slice(2,5).map(Number),v:f.slice(5,8).map(Number)};
-}
-const sub=(a,b)=>a.map((x,i)=>x-b[i]);
-const norm=a=>Math.hypot(...a);
-
-function iso(d){return d.toISOString().slice(0,16).replace('T',' ')}
-
-async function update(){
-  timeline();
-  const now=new Date(), end=new Date(now.getTime()+120000);
-  const [a,b]=[iso(now),iso(end)];
-  try{
-    const [sc,me,ea]=await Promise.all([hz('-121','@sun',a,b),hz('199','@sun',a,b),hz('399','@sun',a,b)]);
-    const rel=sub(sc.p,me.p), relv=sub(sc.v,me.v);
-    const dM=norm(rel), dS=norm(sc.p), dE=norm(sub(sc.p,ea.p));
-    $('nums').innerHTML=[
-      ['Distància a Mercuri',`${fmt(dM)} km`],
-      ['Altitud sobre la superfície',`${fmt(Math.max(dM-RM,0))} km`],
-      ['Velocitat relativa a Mercuri',`${fmt(norm(relv),2)} km/s`],
-      ['Distància al Sol',`${fmt(dS/AU,3)} UA`],
-      ['Distància a la Terra',`${fmt(dE/AU,3)} UA`],
-      ['Senyal de ràdio (un sentit)',`${fmt(dE/C/60,1)} min`]
-    ].map(([k,v])=>`<div><div class="k">${k}</div><div class="v">${v}</div></div>`).join('');
-    $('stamp').textContent='· '+now.toLocaleTimeString('ca')+' (actualitza cada minut)';
-    $('err').textContent='';
-    draw1(sc.p,me.p,ea.p); draw2(rel,dM);
-  }catch(e){
-    $('nums').innerHTML='';
-    $('err').textContent="No he pogut obtenir la posició de JPL Horizons ara mateix. Prova-ho més tard o consulta els enllaços de sota.";
-    console.error(e);
+function build(){
+  const{lat,lon,km}=area();
+  const dLat=km/111.32/2, dLon=km/(111.32*Math.cos(lat*Math.PI/180))/2;
+  const px=Math.max(64,Math.min(2500,Math.round(km*1000/10)));
+  const bbox=[lon-dLon,lat-dLat,lon+dLon,lat+dLat].map(v=>v.toFixed(6)).join(',');
+  const mpp=Math.round(km*1000/px);
+  let url;
+  const common=`SERVICE=WMS&REQUEST=GetMap&VERSION=1.1.1&SRS=EPSG:4326&BBOX=${bbox}&WIDTH=${px}&HEIGHT=${px}&FORMAT=image/png&STYLES=`;
+  if($('src').value==='eox'){
+    url=`https://tiles.maps.eox.at/wms?${common}&LAYERS=s2cloudless-${$('year').value}`;
+  }else{
+    const id=$('iid').value.trim();
+    if(!id)throw new Error("Falta l'Instance ID de Copernicus.");
+    const to=new Date(),from=new Date(Date.now()-(+$('days').value||30)*864e5);
+    const d=x=>x.toISOString().slice(0,10);
+    url=`https://sh.dataspace.copernicus.eu/ogc/wms/${encodeURIComponent(id)}?${common}&LAYERS=${encodeURIComponent($('layer').value)}`+
+        `&TIME=${d(from)}/${d(to)}&MAXCC=${+$('cc').value||20}&showlogo=false`;
   }
+  return{url,px,mpp};
 }
 
-function setup(c){const x=c.getContext('2d');x.clearRect(0,0,400,400);x.fillStyle='#05070c';x.fillRect(0,0,400,400);return x}
-function dot(x,px,py,r,col,label){x.fillStyle=col;x.beginPath();x.arc(px,py,r,0,7);x.fill();
-  if(label){x.fillStyle='#bbb';x.font='12px system-ui';x.fillText(label,px+r+4,py+4)}}
-
-function draw1(sc,me,ea){
-  const x=setup($('c1')), S=190/(1.15*AU), P=p=>[200+p[0]*S,200-p[1]*S];
-  x.strokeStyle='#333';
-  for(const r of [0.387,1]){x.beginPath();x.arc(200,200,r*AU*S,0,7);x.stroke()}
-  dot(x,200,200,7,'#ffcc33','Sol');
-  const e=P(ea), m=P(me), s=P(sc);
-  dot(x,...e,5,'#4aa3ff','Terra');
-  dot(x,...m,4,'#c9a27a','Mercuri');
-  x.strokeStyle='#f08a4b';x.beginPath();x.arc(...s,9,0,7);x.stroke();
+async function get(){
+  $('msg').className='mu';$('msg').textContent='Descarregant…';$('go').disabled=true;
+  try{
+    const{url,px,mpp}=build();
+    const r=await fetch(url);
+    const t=r.headers.get('content-type')||'';
+    if(!r.ok||!t.startsWith('image'))throw new Error('El servidor ha respost: '+(await r.text()).slice(0,200));
+    blob=await r.blob();
+    $('img').src=URL.createObjectURL(blob);$('img').hidden=false;
+    $('info').textContent=`${px} × ${px} px · ~${mpp} m/píxel · ${new Date().toLocaleString('ca')}`+(mpp>10?' (limitat pel màxim de la mida de la imatge)':'');
+    $('save').disabled=false;$('msg').textContent='';
+    return true;
+  }catch(e){$('msg').className='err';$('msg').textContent=e.message;return false}
+  finally{$('go').disabled=false}
 }
 
-function draw2(rel,d){
-  const x=setup($('c2'));
-  const R=Math.max(d*1.4,RM*4), S=180/R;
-  dot(x,200,200,Math.max(RM*S,4),'#c9a27a','Mercuri');
-  const px=200+rel[0]*S, py=200-rel[1]*S;
-  dot(x,px,py,4,'#f08a4b','BepiColombo');
-  $('c2n').textContent=`Vista des de dalt (pla de l'el·líptica). Escala: ${fmt(R)} km fins a la vora.`;
+function name(){return`sentinel_${new Date().toISOString().slice(0,16).replace(/[:T]/g,'-')}.png`}
+
+async function save(){
+  if(!blob)return;
+  const f=new File([blob],name(),{type:'image/png'});
+  if(navigator.canShare&&navigator.canShare({files:[f]})){
+    try{await navigator.share({files:[f],title:'Sentinel-2'});return}catch(e){if(e.name==='AbortError')return}
+  }
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=f.name;a.click();
 }
 
-update(); setInterval(update,60000);
+function schedule(){
+  clearInterval(timer);
+  const s=+$('every').value;
+  if(s)timer=setInterval(async()=>{if(await get())save()},s*1000);
+}
+
+$('go').onclick=get;$('save').onclick=save;
+schedule();
 </script>
 </body>
 </html>
